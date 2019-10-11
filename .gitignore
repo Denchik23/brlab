@@ -9,10 +9,12 @@
 wp-admin/
 wp-includes/
 
+
 license.txt
 readme.html
 wp-config.php
 
 wp-content/index.php
+wp-content/debug.log
 wp-content/*/*
 !wp-content/plugins/bets
