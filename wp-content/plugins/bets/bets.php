@@ -19,11 +19,10 @@ function bets_add_caps(){
     $admin->add_cap( 'edit_others_bests' );
     $admin->add_cap( 'edit_published_bests' );
     $admin->add_cap( 'edit_private_bests' );
+	$admin->add_cap( 'delete_best' );
     $admin->add_cap( 'delete_bests' );
-    $admin->add_cap( 'delete_best' );
     $admin->add_cap( 'delete_others_bests' );
-    $admin->add_cap( 'delete_published_best' );
-    $admin->add_cap( 'delete_best' );
+    $admin->add_cap( 'delete_published_bests' );
     $admin->add_cap( 'delete_private_best' );
     $admin->add_cap( 'publish_bests' );
     $admin->add_cap( 'moderate_best_comments' );

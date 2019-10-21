@@ -1,7 +1,10 @@
 <?php
 
-add_action( 'init', 'best_register_post_type_init' ); // Использовать функцию только внутри хука init
- 
+add_action( 'init', 'best_register_post_type_init' );
+
+/*
+ * Регистрируем новый тип постов
+ */
 function best_register_post_type_init() {
 	$labels = array(
 		'name' => 'Cтавки',
@@ -32,8 +35,9 @@ function best_register_post_type_init() {
 	register_post_type('best', $args);
 }
 
-
-// хук для регистрации
+/*
+ * Регистрируем таксономию
+ */
 add_action( 'init', 'create_taxonomy_bidtype' );
 function create_taxonomy_bidtype() {
 
@@ -50,37 +54,23 @@ function create_taxonomy_bidtype() {
             'parent_item_colon' => 'Parent ставки:',
             'edit_item'         => 'Edit ставки',
             'update_item'       => 'Update ставки',
-            'add_new_item'      => 'Add New ставки',
+            'add_new_item'      => 'Add New ставку',
             'new_item_name'     => 'New Genre Name',
             'menu_name'         => 'Тип ставки',
         ],
-        'description'           => '', // описание таксономии
+        'description'           => '', 
         'public'                => true,
-        // 'publicly_queryable'    => null, // равен аргументу public
-        // 'show_in_nav_menus'     => true, // равен аргументу public
-        // 'show_ui'               => true, // равен аргументу public
-        // 'show_in_menu'          => true, // равен аргументу show_ui
-        // 'show_tagcloud'         => true, // равен аргументу show_ui
-        // 'show_in_quick_edit'    => null, // равен аргументу show_ui
         'hierarchical'          => false,
-
         'rewrite'               => true,
-        //'query_var'             => $taxonomy, // название параметра запроса
         'capabilities'          => array('assign_terms' => 'edit_bests'),
         'meta_box_cb'           => null, // html метабокса. callback: `post_categories_meta_box` или `post_tags_meta_box`. false — метабокс отключен.
         'show_admin_column'     => false, // авто-создание колонки таксы в таблице ассоциированного типа записи. (с версии 3.5)
         'show_in_rest'          => null, // добавить в REST API
-        //'rest_base'             => null, // $taxonomy
-        // '_builtin'              => false,
-        //'update_count_callback' => '_update_post_term_count',
     ] );
 }
 
-
-
-
 // Подключаем локализацию в самом конце подключаемых к выводу скриптов, чтобы скрипт
-// 'twentyfifteen-script', к которому мы подключаемся, точно был добавлен в очередь на вывод.
+// к которому мы подключаемся, точно был добавлен в очередь на вывод.
 add_action( 'wp_enqueue_scripts', 'btajax_data', 99 );
 function btajax_data(){
     wp_localize_script( 'main.min', 'btajax', 
@@ -94,7 +84,14 @@ function btajax_data(){
 if( wp_doing_ajax() ){
     add_action( 'wp_ajax_best_action', 'best_action_callback' );
     add_action('wp_ajax_nopriv_best_action', 'best_action_callback');
+	
+	//Только для авторизованных
+    add_action('wp_ajax_bestadd_action', 'bestadd_action_callback');
 }
+
+/*
+ * Запись данных в post meta bet_vote
+ */
 function best_action_callback() {
     
     $backArray = array();
@@ -102,11 +99,9 @@ function best_action_callback() {
     $bet_id =  (isset($_POST['betid'])? $_POST['betid']: 0);
     
     if (!is_numeric($bet_vote) || $bet_vote == 0) {
-        //error_log('Зашли в 1');
         $backArray['success'] = false;
         $backArray['html'] = '<div class="alert alert-danger" role="alert">Введено не верное значение!</div>';
     } elseif (empty($bet_id) || !is_numeric($bet_id) || $bet_id == "") {
-        //error_log('Зашли в 2');
         $backArray['success'] = false;
         $backArray['html'] = '<div class="alert alert-danger" role="alert">Не верный id поста!</div>';
     } else {
@@ -131,6 +126,55 @@ function best_action_callback() {
     
     echo json_encode($backArray);
     
+    wp_die();
+}
+
+/*
+ * добавление ставки ajax
+ */
+function bestadd_action_callback() {
+    
+    $backArray = array();
+    $title = (isset($_POST['title'])? $_POST['title']: "");
+    $deskbets =  (isset($_POST['deskbets'])? $_POST['deskbets']: "");
+    $select1Bidtype =  (isset($_POST['select1Bidtype'])? $_POST['select1Bidtype']: "");
+	
+	$cur_user_id = get_current_user_id();
+    
+    if ($title == "") {
+        $backArray['success'] = false;
+        $backArray['html'] = '<div class="alert alert-danger" role="alert">Введите название ставки</div>';
+    } elseif (empty($select1Bidtype) || $select1Bidtype == "") {
+        $backArray['success'] = false;
+        $backArray['html'] = '<div class="alert alert-danger" role="alert">Выберите тип ставки</div>';
+	} elseif($cur_user_id == 0) {
+		$backArray['success'] = false;
+        $backArray['html'] = '<div class="alert alert-danger" role="alert">Не верный '.$cur_user_id.' пользователя</div>';
+	} else {
+        $post_data = array(
+			'post_title'    => wp_strip_all_tags($title),
+			'post_content'  => $deskbets,
+			'post_type'		=> 'best',
+			'post_status'   => 'publish',
+			'post_author'   => $cur_user_id,
+			'tax_input'		=>  array('bidtype' => array($select1Bidtype)),
+		);
+		//Добавляем фильтр
+		$post_data = apply_filters('filter_add_best', $post_data);
+		$best_id = wp_insert_post($post_data, false);
+		if ($best_id == 0) {
+			$backArray['success'] = false;
+			$backArray['html'] = '<div class="alert alert-danger" role="alert">Ошибка при записи</div>';
+		} else {
+			$backArray['success'] = true;
+			$backArray['html'] = '<div class="alert alert-success" role="alert">Ставка с id  - '.$best_id.' добавлена!</div>';
+			//Хук действий после записи поста
+			do_action('afte_add_best', $best_id);
+		}  
+    }
+    
+    echo json_encode($backArray);
+	
     wp_die();
 }
 
@@ -169,9 +213,7 @@ function best_action_javascript() {
                 //console.log(data);
                 jQuery.post( btajax.url, data, function(response) {
                     //удаляем все alerts
-                    console.log(response);
-                    let alertDiv = document.querySelector('.alert');
-                    if (alertDiv !== null) alertDiv.remove();
+                    clearAlert();
                     if (response.success) {
                         //Делаем кнопку недоступной
                         bet_buttom.setAttribute('disabled',false);
@@ -181,7 +223,46 @@ function best_action_javascript() {
                 },'json');
             };
         }
-        
+		var bet_addForm = document.getElementById('addbets_ajax');
+        if (bet_addForm != null) {
+			bet_addForm.addEventListener("submit", function(event){
+				event.preventDefault();    //stop form from submitting
+				var bet_container = document.querySelector("#bet-container");
+				
+				let titlebets = this.querySelector("#titlebets");
+				let deskbets = this.querySelector("#deskbets");
+				let select1Bidtype = this.querySelector("#Select1Bidtype");
+				
+				if (titlebets.value ===  "") {
+                    alert('Введите название ставки');
+                    titlebets.focus();
+                    return;
+                }
+				if (select1Bidtype.value ===  "0") {
+                    alert('Выберите тип ставки');
+                    select1Bidtype.focus();
+                    return;
+                }
+				
+				data.action = 'bestadd_action';
+                data.title = titlebets.value;
+                data.deskbets = deskbets.value;
+                data.select1Bidtype = select1Bidtype.value;
+				
+				//ajax
+                //console.log(data);
+                jQuery.post( btajax.url, data, function(response) {
+                    //удаляем все alerts
+					clearAlert();
+					bet_container.insertAdjacentHTML('afterbegin', response.html);
+                },'json');
+			});
+		} 
+		
+		function clearAlert() {
+			let alertDiv = document.querySelector('.alert');
+            if (alertDiv !== null) alertDiv.remove();
+		}
         
     });
     </script>
