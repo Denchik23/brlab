@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Sports Betting
-Description: Тестовое задание для комании br-lab!
+Description: Тестовое задание для комании BR Lab!
 Author: Id_Denchik
 */
 
