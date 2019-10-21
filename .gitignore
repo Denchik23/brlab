@@ -18,3 +18,4 @@ wp-content/index.php
 wp-content/debug.log
 wp-content/*/*
 !wp-content/plugins/bets
+!wp-content/themes/balab
